@@ -10,7 +10,7 @@ RaceDay is a web-based event management system designed for road running, walkin
 Event organisers can use RaceDay to create and manage events, categories, participant enrolments, and event results. The system provides a simple and organised way to manage event information and improve the overall experience for both organisers and participants.
 
 
-## Project Features
+## Project Features 
 
 ### Participant Features
 
