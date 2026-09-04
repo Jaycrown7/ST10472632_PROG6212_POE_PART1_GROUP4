@@ -85,6 +85,12 @@ The workflow checks for:
 - The API Endpoint Plan PDF
 - The RaceDay SQL database script
 
+## Part 1 Validation
+
+The SQL database was tested successfully in SQL Server Management Studio.
+
+The GitHub Actions workflow was also executed successfully and confirmed that the required Part 1 documentation is present in the repository.
+
 ### Successful CI/CD Build
 
 ![Successful CI/CD Build](docs/CI_CD_Screenshot.png)
