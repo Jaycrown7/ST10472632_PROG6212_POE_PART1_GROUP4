@@ -10,29 +10,34 @@ RaceDay is a web-based event management system designed for road running, walkin
 Event organisers can use RaceDay to create and manage events, categories, participant enrolments, and event results. The system provides a simple and organised way to manage event information and improve the overall experience for both organisers and participants.
 
 
-## User Roles
+## Project Features
 
-### Organiser
+### Participant Features
 
-An Organiser can:
+* Register and log in to the system
+* Manage a personal user profile
+* View available events
+* View event categories
+* Enrol in events
+* View event results
 
-- Create, update, and delete events
-- Manage event categories
-- View enrolments for their events
-- Capture participant results
-- Update participant results
+### Event Organiser Features
 
-### Participant
+* Create and manage events
+* Manage event categories
+* View participant enrolments
+* Manage event results
+* Update and maintain event information
 
-A Participant can:
+### System Features
 
-- Create an account
-- Log in to the system
-- View and update their profile
-- Browse available events
-- Enter events by selecting a category
-- View their own enrolments
-- View their personal results
+* User authentication
+* Event management
+* Category management
+* Event enrolment management
+* Results management
+* Responsive and user-friendly interface
+
 
 ## Part 1
 
