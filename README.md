@@ -112,6 +112,16 @@ YouTube video:
 
 **[https://youtu.be/YCT6UP938xA]**
 
+## Part 1 Deliverables
+
+Part 1 contains the following completed deliverables:
+
+1. Entity Relationship Diagram
+2. RESTful API Endpoint Plan
+3. SQL Server Database Script
+4. GitHub Actions CI/CD Validation
+5. Project README and Video Presentation
+
 ## Project Development
 
 RaceDay will continue to be developed across the following parts:
