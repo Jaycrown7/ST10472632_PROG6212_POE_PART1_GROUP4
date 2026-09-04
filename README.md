@@ -97,7 +97,7 @@ All Part 1 planning documents are available in the `docs` folder.
 
 YouTube video:
 
-**[WILL INSERT MY UNLISTED YOUTUBE VIDEO LINK HERE]**
+**[https://youtu.be/YCT6UP938xA]**
 
 ## Project Development
 
