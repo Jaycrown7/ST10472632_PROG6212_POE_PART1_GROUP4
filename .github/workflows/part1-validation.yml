@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-            - name: Validate Part 1 documentation
+      - name: Validate Part 1 documentation
         run: |
           test -d docs
           test -f docs/RaceDay_ERD.png
