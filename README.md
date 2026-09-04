@@ -85,6 +85,13 @@ The workflow checks for:
 - The API Endpoint Plan PDF
 - The RaceDay SQL database script
 
+## Part 1 Documentation
+
+- [RaceDay ERD](docs/RaceDay_ERD.png)
+- [API Endpoint Plan](docs/RaceDay_API_Endpoint_Plan.pdf)
+- [SQL Database Script](docs/RaceDay_Database.sql)
+- [Database Testing](docs/Database_Testing.md)
+
 ## Part 1 Validation
 
 The SQL database was tested successfully in SQL Server Management Studio.
