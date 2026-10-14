@@ -10,7 +10,7 @@ GO
 
 -- =========================================================
 -- DROP EXISTING TABLES
--- Allows the script to be safely tested again
+-- Drop child tables before parent tables
 -- =========================================================
 
 IF OBJECT_ID('dbo.Result', 'U') IS NOT NULL
@@ -25,12 +25,16 @@ IF OBJECT_ID('dbo.Category', 'U') IS NOT NULL
     DROP TABLE dbo.Category;
 GO
 
-IF OBJECT_ID('dbo.Event', 'U') IS NOT NULL
-    DROP TABLE dbo.Event;
+IF OBJECT_ID('dbo.Participants', 'U') IS NOT NULL
+    DROP TABLE dbo.Participants;
 GO
 
 IF OBJECT_ID('dbo.UserProfile', 'U') IS NOT NULL
     DROP TABLE dbo.UserProfile;
+GO
+
+IF OBJECT_ID('dbo.Event', 'U') IS NOT NULL
+    DROP TABLE dbo.Event;
 GO
 
 IF OBJECT_ID('dbo.[User]', 'U') IS NOT NULL
@@ -39,6 +43,7 @@ GO
 
 -- =========================================================
 -- 1. USER
+-- Stores common information for all users
 -- =========================================================
 
 CREATE TABLE dbo.[User]
@@ -59,7 +64,23 @@ CREATE TABLE dbo.[User]
 GO
 
 -- =========================================================
--- 2. USER PROFILE
+-- 2. PARTICIPANTS
+-- Explicitly identifies users registered as participants
+-- =========================================================
+
+CREATE TABLE dbo.Participants
+(
+    UserID INT PRIMARY KEY,
+
+    CONSTRAINT FK_Participants_User
+        FOREIGN KEY (UserID)
+        REFERENCES dbo.[User](UserID)
+);
+GO
+
+-- =========================================================
+-- 3. USER PROFILE
+-- Stores additional profile information
 -- =========================================================
 
 CREATE TABLE dbo.UserProfile
@@ -81,7 +102,7 @@ CREATE TABLE dbo.UserProfile
 GO
 
 -- =========================================================
--- 3. EVENT
+-- 4. EVENT
 -- =========================================================
 
 CREATE TABLE dbo.Event
@@ -109,7 +130,7 @@ CREATE TABLE dbo.Event
 GO
 
 -- =========================================================
--- 4. CATEGORY
+-- 5. CATEGORY
 -- =========================================================
 
 CREATE TABLE dbo.Category
@@ -138,7 +159,8 @@ CREATE TABLE dbo.Category
 GO
 
 -- =========================================================
--- 5. ENROLMENT
+-- 6. ENROLMENT
+-- Connects participants to event categories
 -- =========================================================
 
 CREATE TABLE dbo.Enrolment
@@ -151,7 +173,7 @@ CREATE TABLE dbo.Enrolment
 
     CONSTRAINT FK_Enrolment_Participant
         FOREIGN KEY (ParticipantID)
-        REFERENCES dbo.[User](UserID),
+        REFERENCES dbo.Participants(UserID),
 
     CONSTRAINT FK_Enrolment_Category
         FOREIGN KEY (CategoryID)
@@ -166,7 +188,8 @@ CREATE TABLE dbo.Enrolment
 GO
 
 -- =========================================================
--- 6. RESULT
+-- 7. RESULT
+-- Stores the results for an enrolment
 -- =========================================================
 
 CREATE TABLE dbo.Result
@@ -195,31 +218,51 @@ GO
 -- =========================================================
 
 -- =========================================================
+-- 1. INSERT USERS
 -- 2 ORGANISERS + 2 PARTICIPANTS
+-- Password values are placeholders for database testing.
+-- They are NOT valid password hashes.
 -- =========================================================
 
 INSERT INTO dbo.[User]
-    (FirstName, LastName, Email, PasswordHash, PhoneNumber, City, Role)
+    (FirstName, LastName, Email, PasswordHash,
+     PhoneNumber, City, Role)
 VALUES
     ('Thabo', 'Mokoena', 'thabo.mokoena@raceday.co.za',
-     'HASHED_PASSWORD_1', '0711111111', 'Johannesburg', 'Organiser'),
+     'HASHED_PASSWORD_1', '0711111111',
+     'Johannesburg', 'Organiser'),
 
     ('Lerato', 'Mahlangu', 'lerato.mahlangu@raceday.co.za',
-     'HASHED_PASSWORD_2', '0722222222', 'Pretoria', 'Organiser'),
+     'HASHED_PASSWORD_2', '0722222222',
+     'Pretoria', 'Organiser'),
 
     ('Sipho', 'Dlamini', 'sipho.dlamini@example.com',
-     'HASHED_PASSWORD_3', '0733333333', 'Tembisa', 'Participant'),
+     'HASHED_PASSWORD_3', '0733333333',
+     'Tembisa', 'Participant'),
 
     ('Amahle', 'Ndlovu', 'amahle.ndlovu@example.com',
-     'HASHED_PASSWORD_4', '0744444444', 'Soweto', 'Participant');
+     'HASHED_PASSWORD_4', '0744444444',
+     'Soweto', 'Participant');
 GO
 
 -- =========================================================
--- USER PROFILES
+-- 2. REGISTER PARTICIPANTS
+-- Automatically selects users with the Participant role
+-- =========================================================
+
+INSERT INTO dbo.Participants (UserID)
+SELECT UserID
+FROM dbo.[User]
+WHERE Role = 'Participant';
+GO
+
+-- =========================================================
+-- 3. USER PROFILES
 -- =========================================================
 
 INSERT INTO dbo.UserProfile
-    (UserID, Address, City, DateOfBirth, EmergencyContact, ProfileImageUrl)
+    (UserID, Address, City, DateOfBirth,
+     EmergencyContact, ProfileImageUrl)
 VALUES
     (1, '12 Mandela Street', 'Johannesburg', '1988-04-15',
      'Nomsa Mokoena - 0712345678', NULL),
@@ -235,11 +278,12 @@ VALUES
 GO
 
 -- =========================================================
--- 3 EVENTS
+-- 4. EVENTS
 -- =========================================================
 
 INSERT INTO dbo.Event
-    (OrganiserID, EventName, Description, EventDate, Location, Distance, EventType)
+    (OrganiserID, EventName, Description, EventDate,
+     Location, Distance, EventType)
 VALUES
     (1, 'Tembisa Community Run',
      'A community road running event for participants of different ages.',
@@ -255,11 +299,12 @@ VALUES
 GO
 
 -- =========================================================
--- CATEGORIES FOR EACH EVENT
+-- 5. CATEGORIES
 -- =========================================================
 
 INSERT INTO dbo.Category
-    (EventID, CategoryName, Distance, EntryFee, MaximumParticipants)
+    (EventID, CategoryName, Distance,
+     EntryFee, MaximumParticipants)
 VALUES
     -- Tembisa Community Run
     (1, 'Under 20', 10.00, 80.00, 500),
@@ -277,7 +322,7 @@ VALUES
 GO
 
 -- =========================================================
--- SAMPLING ENROLMENTS
+-- 6. ENROLMENTS
 -- =========================================================
 
 INSERT INTO dbo.Enrolment
@@ -290,7 +335,7 @@ VALUES
 GO
 
 -- =========================================================
--- SAMPLING RESULTS
+-- 7. RESULTS
 -- =========================================================
 
 INSERT INTO dbo.Result
@@ -301,13 +346,34 @@ VALUES
 GO
 
 -- =========================================================
--- VERIFYING DATA
+-- VERIFY DATABASE TABLES
+-- =========================================================
+
+SELECT name AS TableName
+FROM sys.tables
+WHERE name IN
+(
+    'User',
+    'Participants',
+    'UserProfile',
+    'Event',
+    'Category',
+    'Enrolment',
+    'Result'
+)
+ORDER BY name;
+GO
+
+-- =========================================================
+-- VERIFY SAMPLE DATA
 -- =========================================================
 
 SELECT * FROM dbo.[User];
+SELECT * FROM dbo.Participants;
 SELECT * FROM dbo.UserProfile;
 SELECT * FROM dbo.Event;
 SELECT * FROM dbo.Category;
 SELECT * FROM dbo.Enrolment;
 SELECT * FROM dbo.Result;
 GO
+
