@@ -1,7 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using RaceDay.API.DTOs;
 using RaceDay.API.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace RaceDay.API.Controllers
 {
@@ -49,7 +55,61 @@ namespace RaceDay.API.Controllers
                 });
             }
 
+            var claims = new List<Claim>
+            {
+                new Claim(
+                    ClaimTypes.NameIdentifier,
+                    response.UserId.ToString()),
+
+                new Claim(
+                    ClaimTypes.Name,
+                    response.FirstName + " " + response.LastName),
+
+                new Claim(
+                    ClaimTypes.Email,
+                    response.Email),
+
+                new Claim(
+                    ClaimTypes.Role,
+                    response.Role)
+            };
+
+            var identity = new ClaimsIdentity(
+                claims,
+                CookieAuthenticationDefaults.AuthenticationScheme);
+
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal);
+
             return Ok(response);
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme);
+
+            return Ok(new
+            {
+                message = "Logout successful."
+            });
+
+        }
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult GetCurrentUser()
+        {
+            return Ok(new
+            {
+                userId = User.FindFirstValue(ClaimTypes.NameIdentifier),
+                name = User.FindFirstValue(ClaimTypes.Name),
+                email = User.FindFirstValue(ClaimTypes.Email),
+                role = User.FindFirstValue(ClaimTypes.Role)
+            });
         }
     }
 }
