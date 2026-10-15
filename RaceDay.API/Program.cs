@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RaceDay.API.Data;
+using RaceDay.API.Services;
 
 namespace RaceDay.API
 {
@@ -16,6 +17,8 @@ namespace RaceDay.API
             builder.Services.AddDbContext<RaceDayDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("DefaultConnection")));
+
+            builder.Services.AddScoped<AuthService>();
 
             var app = builder.Build();
 
