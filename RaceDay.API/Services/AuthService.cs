@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +14,7 @@ namespace RaceDay.API.Services
         private readonly RaceDayDbContext _context;
         private readonly PasswordHasher<User> _passwordHasher;
 
-
-    public AuthService(RaceDayDbContext context)
+        public AuthService(RaceDayDbContext context)
         {
             _context = context;
             _passwordHasher = new PasswordHasher<User>();
@@ -48,16 +48,31 @@ namespace RaceDay.API.Services
                 user,
                 request.Password);
 
-            _context.Users.Add(user);
+            // Create the user and participant profile together.
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
 
             try
             {
+                _context.Users.Add(user);
                 await _context.SaveChangesAsync();
+
+                var participant = new Participant
+                {
+                    UserId = user.UserId
+                };
+
+                _context.Participants.Add(participant);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
             }
             catch (DbUpdateException)
             {
+                await transaction.RollbackAsync();
+
                 throw new InvalidOperationException(
-                    "The account could not be created. The email may already be registered.");
+                    "The account could not be created. Please check the registration details or whether the email is already registered.");
             }
 
             return new AuthResponse
@@ -104,6 +119,5 @@ namespace RaceDay.API.Services
             };
         }
     }
-
-
 }
+
