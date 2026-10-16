@@ -18,12 +18,14 @@ namespace RaceDay.API.Controllers
     {
         private readonly RaceDayDbContext _context;
 
-        public EnrolmentsController(RaceDayDbContext context)
+
+    public EnrolmentsController(RaceDayDbContext context)
         {
             _context = context;
         }
 
-        // PARTICIPANT: Enrol in a category
+        // POST /api/enrolments
+        // Participant enrols in a category belonging to the specified event.
         [HttpPost]
         [Authorize(Roles = "Participant")]
         public async Task<IActionResult> CreateEnrolment(
@@ -32,63 +34,47 @@ namespace RaceDay.API.Controllers
             var userId = GetUserId();
 
             if (userId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the logged-in user."
-                });
-            }
+                return Unauthorized(new { message = "Unable to identify the logged-in user." });
 
             var participant = await _context.Participants
                 .FirstOrDefaultAsync(p => p.UserId == userId.Value);
 
             if (participant == null)
-            {
-                return BadRequest(new
-                {
-                    message = "A participant profile was not found for this account."
-                });
-            }
+                return BadRequest(new { message = "Participant profile not found." });
+
+            var eventExists = await _context.Events
+                .AnyAsync(e => e.EventId == request.EventId);
+
+            if (!eventExists)
+                return NotFound(new { message = "Event not found." });
 
             var category = await _context.Categories
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.CategoryId == request.CategoryId);
+                .FirstOrDefaultAsync(c =>
+                    c.CategoryId == request.CategoryId &&
+                    c.EventId == request.EventId);
 
             if (category == null)
-            {
                 return NotFound(new
                 {
-                    message = "Category not found."
+                    message = "The category was not found for the specified event."
                 });
-            }
 
-            // Prevent duplicate enrolments.
             var alreadyEnrolled = await _context.Enrolments
                 .AnyAsync(e =>
                     e.ParticipantId == participant.UserId &&
                     e.CategoryId == category.CategoryId);
 
             if (alreadyEnrolled)
-            {
-                return Conflict(new
-                {
-                    message = "You are already enrolled in this category."
-                });
-            }
+                return Conflict(new { message = "You are already enrolled in this category." });
 
-            // Check the number of active enrolments in this category.
             var activeEnrolments = await _context.Enrolments
                 .CountAsync(e =>
                     e.CategoryId == category.CategoryId &&
                     e.Status == "Active");
 
             if (activeEnrolments >= category.MaximumParticipants)
-            {
-                return Conflict(new
-                {
-                    message = "This category has reached its maximum capacity."
-                });
-            }
+                return Conflict(new { message = "This category has reached its maximum capacity." });
 
             var enrolment = new Enrolment
             {
@@ -99,32 +85,7 @@ namespace RaceDay.API.Controllers
             };
 
             _context.Enrolments.Add(enrolment);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                // The database's unique constraint protects against
-                // duplicate enrolments, including concurrent requests.
-                _context.Entry(enrolment).State = EntityState.Detached;
-
-                var duplicateExists = await _context.Enrolments
-                    .AnyAsync(e =>
-                        e.ParticipantId == participant.UserId &&
-                        e.CategoryId == category.CategoryId);
-
-                if (duplicateExists)
-                {
-                    return Conflict(new
-                    {
-                        message = "You are already enrolled in this category."
-                    });
-                }
-
-                throw;
-            }
+            await _context.SaveChangesAsync();
 
             return CreatedAtAction(
                 nameof(GetMyEnrolments),
@@ -139,7 +100,7 @@ namespace RaceDay.API.Controllers
                 });
         }
 
-        // PARTICIPANT: View only their own enrolments.
+        // GET /api/enrolments/my
         [HttpGet("my")]
         [Authorize(Roles = "Participant")]
         public async Task<IActionResult> GetMyEnrolments()
@@ -147,23 +108,13 @@ namespace RaceDay.API.Controllers
             var userId = GetUserId();
 
             if (userId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the logged-in user."
-                });
-            }
+                return Unauthorized(new { message = "Unable to identify the logged-in user." });
 
             var participantExists = await _context.Participants
                 .AnyAsync(p => p.UserId == userId.Value);
 
             if (!participantExists)
-            {
-                return NotFound(new
-                {
-                    message = "Participant profile not found."
-                });
-            }
+                return NotFound(new { message = "Participant profile not found." });
 
             var enrolments = await _context.Enrolments
                 .AsNoTracking()
@@ -195,37 +146,25 @@ namespace RaceDay.API.Controllers
             return Ok(enrolments);
         }
 
-        // ORGANISER: View enrolments for an event they own.
-        [HttpGet("events/{eventId:int}")]
+        // GET /api/events/{eventId}/enrolments
+        [HttpGet("/api/events/{eventId:int}/enrolments")]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> GetEventEnrolments(int eventId)
         {
             var userId = GetUserId();
 
             if (userId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the logged-in user."
-                });
-            }
+                return Unauthorized(new { message = "Unable to identify the logged-in user." });
 
             var eventItem = await _context.Events
                 .AsNoTracking()
                 .FirstOrDefaultAsync(e => e.EventId == eventId);
 
             if (eventItem == null)
-            {
-                return NotFound(new
-                {
-                    message = "Event not found."
-                });
-            }
+                return NotFound(new { message = "Event not found." });
 
             if (eventItem.OrganiserId != userId.Value)
-            {
                 return Forbid();
-            }
 
             var enrolments = await _context.Enrolments
                 .AsNoTracking()
@@ -255,16 +194,40 @@ namespace RaceDay.API.Controllers
             return Ok(enrolments);
         }
 
+        // DELETE /api/enrolments/{id}
+        [HttpDelete("{id:int}")]
+        [Authorize(Roles = "Participant")]
+        public async Task<IActionResult> CancelEnrolment(int id)
+        {
+            var userId = GetUserId();
+
+            if (userId == null)
+                return Unauthorized(new { message = "Unable to identify the logged-in user." });
+
+            var enrolment = await _context.Enrolments
+                .FirstOrDefaultAsync(e => e.EnrolmentId == id);
+
+            if (enrolment == null)
+                return NotFound(new { message = "Enrolment not found." });
+
+            if (enrolment.ParticipantId != userId.Value)
+                return Forbid();
+
+            _context.Enrolments.Remove(enrolment);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
         private int? GetUserId()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (int.TryParse(userId, out int parsedUserId))
-            {
-                return parsedUserId;
-            }
-
-            return null;
+            return int.TryParse(userId, out var parsedUserId)
+                ? parsedUserId
+                : null;
         }
     }
+
+
 }

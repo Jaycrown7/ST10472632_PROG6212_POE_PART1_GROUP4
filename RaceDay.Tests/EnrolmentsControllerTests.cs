@@ -17,21 +17,21 @@ namespace RaceDay.Tests
     public class EnrolmentsControllerTests
     {
         private static async Task<(RaceDayDbContext Context, SqliteConnection Connection)>
-            CreateContextAsync()
+        CreateContextAsync()
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
 
-            connection.CreateFunction<string?>(
-                "getdate",
-                () => DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+
+        connection.CreateFunction<string?>(
+            "getdate",
+            () => DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
 
             var options = new DbContextOptionsBuilder<RaceDayDbContext>()
                 .UseSqlite(connection)
                 .Options;
 
             var context = new RaceDayDbContext(options);
-
             await context.Database.EnsureCreatedAsync();
 
             return (context, connection);
@@ -42,24 +42,28 @@ namespace RaceDay.Tests
             string? userId = null,
             string? role = null)
         {
-            var claims = new ClaimsIdentity();
+            ClaimsIdentity identity;
 
             if (userId != null)
             {
-                claims = new ClaimsIdentity(
+                identity = new ClaimsIdentity(
                     new[]
                     {
-                        new Claim(ClaimTypes.NameIdentifier, userId),
-                        new Claim(ClaimTypes.Role, role ?? "Participant")
+                    new Claim(ClaimTypes.NameIdentifier, userId),
+                    new Claim(ClaimTypes.Role, role ?? "Participant")
                     },
                     "TestAuthentication");
+            }
+            else
+            {
+                identity = new ClaimsIdentity();
             }
 
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext
                 {
-                    User = new ClaimsPrincipal(claims)
+                    User = new ClaimsPrincipal(identity)
                 }
             };
         }
@@ -102,8 +106,7 @@ namespace RaceDay.Tests
                 OrganiserId = organiser.UserId,
                 EventName = "Test Running Event",
                 Description = "Event for enrolment unit tests.",
-                EventDate = DateOnly.FromDateTime(
-                    DateTime.UtcNow.AddDays(30)),
+                EventDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30)),
                 Location = "Johannesburg",
                 Distance = 10,
                 EventType = "Run",
@@ -157,7 +160,6 @@ namespace RaceDay.Tests
             await using (connection)
             {
                 var controller = new EnrolmentsController(context);
-
                 SetUser(controller);
 
                 var result = await controller.GetMyEnrolments();
@@ -175,11 +177,11 @@ namespace RaceDay.Tests
             await using (connection)
             {
                 var controller = new EnrolmentsController(context);
-
                 SetUser(controller);
 
                 var request = new CreateEnrolmentRequest
                 {
+                    EventId = 1,
                     CategoryId = 1
                 };
 
@@ -198,7 +200,6 @@ namespace RaceDay.Tests
             await using (connection)
             {
                 var controller = new EnrolmentsController(context);
-
                 SetUser(controller, "1", "Organiser");
 
                 var result = await controller.GetEventEnrolments(999);
@@ -215,17 +216,83 @@ namespace RaceDay.Tests
             await using (context)
             await using (connection)
             {
-                var participant = await CreateParticipantAsync(
+                var (_, eventItem, _) = await CreateEventAndCategoryAsync(
                     context,
                     "enrolment.missing.category@test.com");
 
-                var controller = new EnrolmentsController(context);
+                var participant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.missing.participant@test.com");
 
+                var controller = new EnrolmentsController(context);
                 SetUser(controller, participant.UserId.ToString());
 
                 var request = new CreateEnrolmentRequest
                 {
+                    EventId = eventItem.EventId,
                     CategoryId = 999
+                };
+
+                var result = await controller.CreateEnrolment(request);
+
+                Assert.IsType<NotFoundObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task CreateEnrolment_ShouldReturnNotFound_WhenEventDoesNotExist()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var participant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.missing.event@test.com");
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, participant.UserId.ToString());
+
+                var request = new CreateEnrolmentRequest
+                {
+                    EventId = 999,
+                    CategoryId = 1
+                };
+
+                var result = await controller.CreateEnrolment(request);
+
+                Assert.IsType<NotFoundObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task CreateEnrolment_ShouldReturnNotFound_WhenCategoryBelongsToAnotherEvent()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, eventItem, category) = await CreateEventAndCategoryAsync(
+                    context,
+                    "enrolment.wrong.event.organiser@test.com");
+
+                var (_, otherEvent, _) = await CreateEventAndCategoryAsync(
+                    context,
+                    "enrolment.other.event.organiser@test.com");
+
+                var participant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.wrong.event.participant@test.com");
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, participant.UserId.ToString());
+
+                var request = new CreateEnrolmentRequest
+                {
+                    EventId = otherEvent.EventId,
+                    CategoryId = category.CategoryId
                 };
 
                 var result = await controller.CreateEnrolment(request);
@@ -242,7 +309,7 @@ namespace RaceDay.Tests
             await using (context)
             await using (connection)
             {
-                var (_, _, category) = await CreateEventAndCategoryAsync(
+                var (_, eventItem, category) = await CreateEventAndCategoryAsync(
                     context,
                     "enrolment.valid.organiser@test.com");
 
@@ -251,11 +318,11 @@ namespace RaceDay.Tests
                     "enrolment.valid.participant@test.com");
 
                 var controller = new EnrolmentsController(context);
-
                 SetUser(controller, participant.UserId.ToString());
 
                 var request = new CreateEnrolmentRequest
                 {
+                    EventId = eventItem.EventId,
                     CategoryId = category.CategoryId
                 };
 
@@ -263,10 +330,9 @@ namespace RaceDay.Tests
 
                 Assert.IsType<CreatedAtActionResult>(result);
 
-                var savedEnrolment = await context.Enrolments
-                    .SingleAsync(e =>
-                        e.ParticipantId == participant.UserId &&
-                        e.CategoryId == category.CategoryId);
+                var savedEnrolment = await context.Enrolments.SingleAsync(
+                    e => e.ParticipantId == participant.UserId
+                         && e.CategoryId == category.CategoryId);
 
                 Assert.Equal("Active", savedEnrolment.Status);
             }
@@ -280,7 +346,7 @@ namespace RaceDay.Tests
             await using (context)
             await using (connection)
             {
-                var (_, _, category) = await CreateEventAndCategoryAsync(
+                var (_, eventItem, category) = await CreateEventAndCategoryAsync(
                     context,
                     "enrolment.duplicate.organiser@test.com");
 
@@ -299,11 +365,11 @@ namespace RaceDay.Tests
                 await context.SaveChangesAsync();
 
                 var controller = new EnrolmentsController(context);
-
                 SetUser(controller, participant.UserId.ToString());
 
                 var request = new CreateEnrolmentRequest
                 {
+                    EventId = eventItem.EventId,
                     CategoryId = category.CategoryId
                 };
 
@@ -315,6 +381,52 @@ namespace RaceDay.Tests
                     e => e.ParticipantId == participant.UserId);
 
                 Assert.Equal(1, enrolmentCount);
+            }
+        }
+
+        [Fact]
+        public async Task CreateEnrolment_ShouldReturnConflict_WhenCategoryIsFull()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, eventItem, category) = await CreateEventAndCategoryAsync(
+                    context,
+                    "enrolment.full.organiser@test.com",
+                    1);
+
+                var firstParticipant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.full.first@test.com");
+
+                var secondParticipant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.full.second@test.com");
+
+                context.Enrolments.Add(new Enrolment
+                {
+                    ParticipantId = firstParticipant.UserId,
+                    CategoryId = category.CategoryId,
+                    EnrolmentDate = DateTime.UtcNow,
+                    Status = "Active"
+                });
+
+                await context.SaveChangesAsync();
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, secondParticipant.UserId.ToString());
+
+                var request = new CreateEnrolmentRequest
+                {
+                    EventId = eventItem.EventId,
+                    CategoryId = category.CategoryId
+                };
+
+                var result = await controller.CreateEnrolment(request);
+
+                Assert.IsType<ConflictObjectResult>(result);
             }
         }
 
@@ -336,14 +448,151 @@ namespace RaceDay.Tests
                     "Organiser");
 
                 var controller = new EnrolmentsController(context);
-
                 SetUser(controller, otherOrganiser.UserId.ToString(), "Organiser");
 
-                var result = await controller.GetEventEnrolments(
-                    eventItem.EventId);
+                var result = await controller.GetEventEnrolments(eventItem.EventId);
+
+                Assert.IsType<ForbidResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task GetEventEnrolments_ShouldReturnOk_WhenOrganiserOwnsEvent()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (organiser, eventItem, category) =
+                    await CreateEventAndCategoryAsync(
+                        context,
+                        "enrolment.own.event.organiser@test.com");
+
+                var participant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.own.event.participant@test.com");
+
+                context.Enrolments.Add(new Enrolment
+                {
+                    ParticipantId = participant.UserId,
+                    CategoryId = category.CategoryId,
+                    EnrolmentDate = DateTime.UtcNow,
+                    Status = "Active"
+                });
+
+                await context.SaveChangesAsync();
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, organiser.UserId.ToString(), "Organiser");
+
+                var result = await controller.GetEventEnrolments(eventItem.EventId);
+
+                Assert.IsType<OkObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task CancelEnrolment_ShouldReturnNoContent_WhenParticipantOwnsEnrolment()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, _, category) = await CreateEventAndCategoryAsync(
+                    context,
+                    "enrolment.cancel.organiser@test.com");
+
+                var participant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.cancel.participant@test.com");
+
+                var enrolment = new Enrolment
+                {
+                    ParticipantId = participant.UserId,
+                    CategoryId = category.CategoryId,
+                    EnrolmentDate = DateTime.UtcNow,
+                    Status = "Active"
+                };
+
+                context.Enrolments.Add(enrolment);
+                await context.SaveChangesAsync();
+
+                var enrolmentId = enrolment.EnrolmentId;
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, participant.UserId.ToString());
+
+                var result = await controller.CancelEnrolment(enrolmentId);
+
+                Assert.IsType<NoContentResult>(result);
+                Assert.False(await context.Enrolments.AnyAsync(
+                    e => e.EnrolmentId == enrolmentId));
+            }
+        }
+
+        [Fact]
+        public async Task CancelEnrolment_ShouldReturnNotFound_WhenEnrolmentDoesNotExist()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var participant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.cancel.missing@test.com");
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, participant.UserId.ToString());
+
+                var result = await controller.CancelEnrolment(999);
+
+                Assert.IsType<NotFoundObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task CancelEnrolment_ShouldReturnForbid_WhenEnrolmentBelongsToAnotherParticipant()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, _, category) = await CreateEventAndCategoryAsync(
+                    context,
+                    "enrolment.cancel.ownership.organiser@test.com");
+
+                var owner = await CreateParticipantAsync(
+                    context,
+                    "enrolment.cancel.owner@test.com");
+
+                var otherParticipant = await CreateParticipantAsync(
+                    context,
+                    "enrolment.cancel.other@test.com");
+
+                var enrolment = new Enrolment
+                {
+                    ParticipantId = owner.UserId,
+                    CategoryId = category.CategoryId,
+                    EnrolmentDate = DateTime.UtcNow,
+                    Status = "Active"
+                };
+
+                context.Enrolments.Add(enrolment);
+                await context.SaveChangesAsync();
+
+                var controller = new EnrolmentsController(context);
+                SetUser(controller, otherParticipant.UserId.ToString());
+
+                var result = await controller.CancelEnrolment(enrolment.EnrolmentId);
 
                 Assert.IsType<ForbidResult>(result);
             }
         }
     }
+
+
 }
