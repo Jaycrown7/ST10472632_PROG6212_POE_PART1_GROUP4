@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RaceDay.API.Data;
 using RaceDay.API.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authorization;
 
 namespace RaceDay.API
 {
@@ -14,32 +13,35 @@ namespace RaceDay.API
 
 
         builder.Services.AddControllers();
+
             builder.Services
-    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.Cookie.Name = "RaceDay.Auth";
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.ExpireTimeSpan = TimeSpan.FromHours(2);
-        options.SlidingExpiration = true;
+                .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+                .AddCookie(options =>
+                {
+                    options.Cookie.Name = "RaceDay.Auth";
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.Cookie.SameSite = SameSiteMode.Lax;
+                    options.ExpireTimeSpan = TimeSpan.FromHours(2);
+                    options.SlidingExpiration = true;
 
-        options.Events.OnRedirectToLogin = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
-        };
+                    options.Events.OnRedirectToLogin = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                        return Task.CompletedTask;
+                    };
 
-        options.Events.OnRedirectToAccessDenied = context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            return Task.CompletedTask;
-        };
-    });
+                    options.Events.OnRedirectToAccessDenied = context =>
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                        return Task.CompletedTask;
+                    };
+                });
 
             builder.Services.AddAuthorization();
-            builder.Services.AddOpenApi();
+
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
             builder.Services.AddDbContext<RaceDayDbContext>(options =>
                 options.UseSqlServer(
@@ -51,14 +53,13 @@ namespace RaceDay.API
 
             if (app.Environment.IsDevelopment())
             {
-                app.MapOpenApi();
+                app.UseSwagger();
+                app.UseSwaggerUI();
             }
 
             app.UseHttpsRedirection();
-
             app.UseAuthentication();
             app.UseAuthorization();
-
             app.MapControllers();
 
             app.Run();
