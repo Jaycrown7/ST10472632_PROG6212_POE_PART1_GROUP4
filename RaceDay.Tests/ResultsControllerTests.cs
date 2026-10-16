@@ -35,6 +35,158 @@ namespace RaceDay.Tests
             return (context, connection);
         }
 
+       
+    [Fact]
+        public async Task GetEventResults_ShouldReturnForbid_WhenEventBelongsToAnotherOrganiser()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var owner = await CreateUserAsync(
+                    context, "results.owner@test.com", "Organiser");
+
+                var otherOrganiser = await CreateUserAsync(
+                    context, "results.other@test.com", "Organiser");
+
+                var raceEvent = await CreateEventAsync(
+                    context, owner.UserId);
+
+                var controller = new ResultsController(context);
+                SetUser(controller, otherOrganiser.UserId.ToString(), "Organiser");
+
+                var result = await controller.GetEventResults(raceEvent.EventId);
+
+                Assert.IsType<ForbidResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task UpdateResult_ShouldReturnNotFound_WhenResultDoesNotExist()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var organiser = await CreateUserAsync(
+                    context, "results.update.missing@test.com", "Organiser");
+
+                var controller = new ResultsController(context);
+                SetUser(controller, organiser.UserId.ToString(), "Organiser");
+
+                var request = new RaceDay.API.DTOs.RecordResultRequest
+                {
+                    EnrolmentId = 1,
+                    FinishTime = new TimeOnly(0, 30, 0),
+                    Position = 1,
+                    ResultStatus = "Completed"
+                };
+
+                var result = await controller.UpdateResult(999, request);
+
+                Assert.IsType<NotFoundObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task UpdateResult_ShouldReturnOk_WhenOrganiserOwnsResult()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var organiser = await CreateUserAsync(
+                    context, "results.update.owner@test.com", "Organiser");
+
+                var setup = await CreateEnrolmentAsync(
+                    context, organiser.UserId, "results.update.participant@test.com");
+
+                var savedResult = new Result
+                {
+                    EnrolmentId = setup.Enrolment.EnrolmentId,
+                    FinishTime = new TimeOnly(0, 35, 0),
+                    Position = 2,
+                    ResultStatus = "Completed",
+                    RecordedAt = DateTime.UtcNow
+                };
+
+                context.Results.Add(savedResult);
+                await context.SaveChangesAsync();
+
+                var controller = new ResultsController(context);
+                SetUser(controller, organiser.UserId.ToString(), "Organiser");
+
+                var request = new RaceDay.API.DTOs.RecordResultRequest
+                {
+                    EnrolmentId = setup.Enrolment.EnrolmentId,
+                    FinishTime = new TimeOnly(0, 32, 0),
+                    Position = 1,
+                    ResultStatus = "Completed"
+                };
+
+                var result = await controller.UpdateResult(savedResult.ResultId, request);
+
+                Assert.IsType<OkObjectResult>(result);
+
+                var updated = await context.Results
+                    .SingleAsync(r => r.ResultId == savedResult.ResultId);
+
+                Assert.Equal(new TimeOnly(0, 32, 0), updated.FinishTime);
+                Assert.Equal(1, updated.Position);
+            }
+        }
+
+        [Fact]
+        public async Task UpdateResult_ShouldReturnForbid_WhenAnotherOrganiserOwnsResult()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var owner = await CreateUserAsync(
+                    context, "results.update.actualowner@test.com", "Organiser");
+
+                var otherOrganiser = await CreateUserAsync(
+                    context, "results.update.otherowner@test.com", "Organiser");
+
+                var setup = await CreateEnrolmentAsync(
+                    context, owner.UserId, "results.update.forbid.participant@test.com");
+
+                var savedResult = new Result
+                {
+                    EnrolmentId = setup.Enrolment.EnrolmentId,
+                    FinishTime = new TimeOnly(0, 35, 0),
+                    Position = 2,
+                    ResultStatus = "Completed",
+                    RecordedAt = DateTime.UtcNow
+                };
+
+                context.Results.Add(savedResult);
+                await context.SaveChangesAsync();
+
+                var controller = new ResultsController(context);
+                SetUser(controller, otherOrganiser.UserId.ToString(), "Organiser");
+
+                var request = new RaceDay.API.DTOs.RecordResultRequest
+                {
+                    EnrolmentId = setup.Enrolment.EnrolmentId,
+                    FinishTime = new TimeOnly(0, 32, 0),
+                    Position = 1,
+                    ResultStatus = "Completed"
+                };
+
+                var result = await controller.UpdateResult(savedResult.ResultId, request);
+
+                Assert.IsType<ForbidResult>(result);
+            }
+        }
+
+
+
         private static void SetUser(
             ResultsController controller,
             string? userId = null,

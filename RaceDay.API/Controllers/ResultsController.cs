@@ -18,12 +18,14 @@ namespace RaceDay.API.Controllers
     {
         private readonly RaceDayDbContext _context;
 
-        public ResultsController(RaceDayDbContext context)
+
+    public ResultsController(RaceDayDbContext context)
         {
             _context = context;
         }
 
-        // ORGANISER: Record a result for an enrolment in their own event.
+        // POST /api/results
+        // Organiser records a result for an enrolment in their own event.
         [HttpPost]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> RecordResult(
@@ -32,100 +34,53 @@ namespace RaceDay.API.Controllers
             var userId = GetUserId();
 
             if (userId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the logged-in organiser."
-                });
-            }
+                return Unauthorized(new { message = "Unable to identify the logged-in organiser." });
 
             if (request.FinishTime <= TimeOnly.MinValue)
-            {
-                return BadRequest(new
-                {
-                    message = "A valid finishing time must be provided."
-                });
-            }
+                return BadRequest(new { message = "A valid finishing time must be provided." });
+
+            if (request.Position < 1)
+                return BadRequest(new { message = "Position must be greater than zero." });
+
+            if (string.IsNullOrWhiteSpace(request.ResultStatus))
+                return BadRequest(new { message = "Result status is required." });
 
             var enrolment = await _context.Enrolments
                 .Include(e => e.Category)
                 .ThenInclude(c => c.Event)
-                .FirstOrDefaultAsync(e =>
-                    e.EnrolmentId == request.EnrolmentId);
+                .FirstOrDefaultAsync(e => e.EnrolmentId == request.EnrolmentId);
 
             if (enrolment == null)
-            {
-                return NotFound(new
-                {
-                    message = "Enrolment not found."
-                });
-            }
+                return NotFound(new { message = "Enrolment not found." });
 
             if (enrolment.Category.Event.OrganiserId != userId.Value)
-            {
                 return Forbid();
-            }
 
             if (enrolment.Status != "Active")
-            {
                 return BadRequest(new
                 {
                     message = "A result can only be recorded for an active enrolment."
                 });
-            }
 
-            bool resultExists = await _context.Results
+            var resultExists = await _context.Results
                 .AnyAsync(r => r.EnrolmentId == request.EnrolmentId);
 
             if (resultExists)
-            {
                 return Conflict(new
                 {
                     message = "A result has already been recorded for this enrolment."
                 });
-            }
-
-            string status = request.ResultStatus.Trim();
-
-            if (status.Length == 0)
-            {
-                return BadRequest(new
-                {
-                    message = "Result status is required."
-                });
-            }
 
             var result = new Result
             {
                 EnrolmentId = request.EnrolmentId,
                 FinishTime = request.FinishTime,
                 Position = request.Position,
-                ResultStatus = status
+                ResultStatus = request.ResultStatus.Trim()
             };
 
             _context.Results.Add(result);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                _context.Entry(result).State = EntityState.Detached;
-
-                bool duplicateNowExists = await _context.Results
-                    .AnyAsync(r => r.EnrolmentId == request.EnrolmentId);
-
-                if (duplicateNowExists)
-                {
-                    return Conflict(new
-                    {
-                        message = "A result has already been recorded for this enrolment."
-                    });
-                }
-
-                throw;
-            }
+            await _context.SaveChangesAsync();
 
             return CreatedAtAction(
                 nameof(GetMyResults),
@@ -141,7 +96,8 @@ namespace RaceDay.API.Controllers
                 });
         }
 
-        // PARTICIPANT: View only their own results.
+        // GET /api/results/my
+        // Participant views their own results.
         [HttpGet("my")]
         [Authorize(Roles = "Participant")]
         public async Task<IActionResult> GetMyResults()
@@ -149,23 +105,13 @@ namespace RaceDay.API.Controllers
             var userId = GetUserId();
 
             if (userId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the logged-in participant."
-                });
-            }
+                return Unauthorized(new { message = "Unable to identify the logged-in participant." });
 
             var participantExists = await _context.Participants
                 .AnyAsync(p => p.UserId == userId.Value);
 
             if (!participantExists)
-            {
-                return NotFound(new
-                {
-                    message = "Participant profile not found."
-                });
-            }
+                return NotFound(new { message = "Participant profile not found." });
 
             var results = await _context.Results
                 .AsNoTracking()
@@ -202,37 +148,26 @@ namespace RaceDay.API.Controllers
             return Ok(results);
         }
 
-        // ORGANISER: View results for an event they own.
-        [HttpGet("events/{eventId:int}")]
+        // GET /api/events/{eventId}/results
+        // Organiser views results for their own event.
+        [HttpGet("/api/events/{eventId:int}/results")]
         [Authorize(Roles = "Organiser")]
         public async Task<IActionResult> GetEventResults(int eventId)
         {
             var userId = GetUserId();
 
             if (userId == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Unable to identify the logged-in organiser."
-                });
-            }
+                return Unauthorized(new { message = "Unable to identify the logged-in organiser." });
 
             var eventItem = await _context.Events
                 .AsNoTracking()
                 .FirstOrDefaultAsync(e => e.EventId == eventId);
 
             if (eventItem == null)
-            {
-                return NotFound(new
-                {
-                    message = "Event not found."
-                });
-            }
+                return NotFound(new { message = "Event not found." });
 
             if (eventItem.OrganiserId != userId.Value)
-            {
                 return Forbid();
-            }
 
             var results = await _context.Results
                 .AsNoTracking()
@@ -264,14 +199,72 @@ namespace RaceDay.API.Controllers
             return Ok(results);
         }
 
+        // PUT /api/results/{id}
+        // Organiser updates a result belonging to their own event.
+        [HttpPut("{id:int}")]
+        [Authorize(Roles = "Organiser")]
+        public async Task<IActionResult> UpdateResult(
+            int id,
+            [FromBody] RecordResultRequest request)
+        {
+            var userId = GetUserId();
+
+            if (userId == null)
+                return Unauthorized(new { message = "Unable to identify the logged-in organiser." });
+
+            if (request.FinishTime <= TimeOnly.MinValue)
+                return BadRequest(new { message = "A valid finishing time must be provided." });
+
+            if (request.Position < 1)
+                return BadRequest(new { message = "Position must be greater than zero." });
+
+            if (string.IsNullOrWhiteSpace(request.ResultStatus))
+                return BadRequest(new { message = "Result status is required." });
+
+            var result = await _context.Results
+                .Include(r => r.Enrolment)
+                    .ThenInclude(e => e.Category)
+                        .ThenInclude(c => c.Event)
+                .FirstOrDefaultAsync(r => r.ResultId == id);
+
+            if (result == null)
+                return NotFound(new { message = "Result not found." });
+
+            if (result.Enrolment.Category.Event.OrganiserId != userId.Value)
+                return Forbid();
+
+            if (result.EnrolmentId != request.EnrolmentId)
+                return BadRequest(new
+                {
+                    message = "The enrolment associated with a result cannot be changed."
+                });
+
+            result.FinishTime = request.FinishTime;
+            result.Position = request.Position;
+            result.ResultStatus = request.ResultStatus.Trim();
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                result.ResultId,
+                result.EnrolmentId,
+                result.FinishTime,
+                result.Position,
+                result.ResultStatus,
+                result.RecordedAt
+            });
+        }
+
         private int? GetUserId()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            return int.TryParse(userId, out int parsedUserId)
+            return int.TryParse(userId, out var parsedUserId)
                 ? parsedUserId
                 : null;
         }
     }
-}
 
+
+}
