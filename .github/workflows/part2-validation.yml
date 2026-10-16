@@ -1,6 +1,6 @@
 name: RaceDay Part 2 Validation
 
-on:
+'on':
 push:
 branches:
 - part2-api
