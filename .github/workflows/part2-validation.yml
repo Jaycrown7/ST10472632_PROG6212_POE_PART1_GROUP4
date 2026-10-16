@@ -1,0 +1,35 @@
+name: RaceDay Part 2 Validation
+
+on:
+push:
+branches:
+- part2-api
+pull_request:
+branches:
+- part2-api
+workflow_dispatch:
+
+jobs:
+build-and-test:
+name: Build and Test RaceDay
+runs-on: windows-latest
+
+
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
+
+  - name: Set up .NET
+    uses: actions/setup-dotnet@v4
+    with:
+      dotnet-version: '10.0.x'
+
+  - name: Restore dependencies
+    run: dotnet restore RaceDay.slnx
+
+  - name: Build solution
+    run: dotnet build RaceDay.slnx --configuration Release --no-restore
+
+  - name: Run unit tests
+    run: dotnet test RaceDay.Tests/RaceDay.Tests.csproj --configuration Release --no-build --logger "console;verbosity=normal"
+
