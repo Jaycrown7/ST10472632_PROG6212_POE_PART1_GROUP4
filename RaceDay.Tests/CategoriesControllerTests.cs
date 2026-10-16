@@ -16,14 +16,15 @@ namespace RaceDay.Tests
     public class CategoriesControllerTests
     {
         private static async Task<(RaceDayDbContext Context, SqliteConnection Connection)>
-            CreateContextAsync()
+        CreateContextAsync()
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
 
-            connection.CreateFunction<string?>(
-                "getdate",
-                () => DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
+
+        connection.CreateFunction<string?>(
+            "getdate",
+            () => DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
 
             var options = new DbContextOptionsBuilder<RaceDayDbContext>()
                 .UseSqlite(connection)
@@ -42,10 +43,10 @@ namespace RaceDay.Tests
             var identity = new ClaimsIdentity(
                 new[]
                 {
-                    new Claim(
-                        ClaimTypes.NameIdentifier,
-                        organiserId.ToString()),
-                    new Claim(ClaimTypes.Role, "Organiser")
+                new Claim(
+                    ClaimTypes.NameIdentifier,
+                    organiserId.ToString()),
+                new Claim(ClaimTypes.Role, "Organiser")
                 },
                 "TestAuthentication");
 
@@ -96,6 +97,19 @@ namespace RaceDay.Tests
             return (organiser, eventItem);
         }
 
+        private static Category CreateCategory(Event eventItem)
+        {
+            return new Category
+            {
+                EventId = eventItem.EventId,
+                CategoryName = "5 km Open",
+                Distance = 5,
+                EntryFee = 100,
+                MaximumParticipants = 100,
+                CreatedAt = DateTime.UtcNow
+            };
+        }
+
         [Fact]
         public async Task GetCategories_ShouldReturnNotFound_WhenEventDoesNotExist()
         {
@@ -122,7 +136,7 @@ namespace RaceDay.Tests
             {
                 var controller = new CategoriesController(context);
 
-                var result = await controller.GetCategoryById(1, 999);
+                var result = await controller.GetCategoryById(999);
 
                 Assert.IsType<NotFoundObjectResult>(result);
             }
@@ -140,10 +154,39 @@ namespace RaceDay.Tests
                     context,
                     "categories.read@test.com");
 
+                context.Categories.Add(CreateCategory(eventItem));
+                await context.SaveChangesAsync();
+
                 var controller = new CategoriesController(context);
 
                 var result = await controller.GetCategories(
                     eventItem.EventId);
+
+                Assert.IsType<OkObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task GetCategoryById_ShouldReturnOk_WhenCategoryExists()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, eventItem) = await CreateEventAsync(
+                    context,
+                    "categories.getbyid@test.com");
+
+                var category = CreateCategory(eventItem);
+
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
+
+                var controller = new CategoriesController(context);
+
+                var result = await controller.GetCategoryById(
+                    category.CategoryId);
 
                 Assert.IsType<OkObjectResult>(result);
             }
@@ -252,5 +295,187 @@ namespace RaceDay.Tests
                 Assert.Equal(5, category.Distance);
             }
         }
+
+        [Fact]
+        public async Task UpdateCategory_ShouldReturnOk_WhenOrganiserOwnsEvent()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (organiser, eventItem) = await CreateEventAsync(
+                    context,
+                    "categories.update@test.com");
+
+                var category = CreateCategory(eventItem);
+
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
+
+                var controller = new CategoriesController(context);
+                SetOrganiser(controller, organiser.UserId);
+
+                var request = new CreateCategoryRequest
+                {
+                    CategoryName = "10 km Open",
+                    Distance = 10,
+                    EntryFee = 150,
+                    MaximumParticipants = 200
+                };
+
+                var result = await controller.UpdateCategory(
+                    category.CategoryId,
+                    request);
+
+                Assert.IsType<OkObjectResult>(result);
+
+                var updatedCategory = await context.Categories
+                    .SingleAsync(c => c.CategoryId == category.CategoryId);
+
+                Assert.Equal("10 km Open", updatedCategory.CategoryName);
+                Assert.Equal(10, updatedCategory.Distance);
+                Assert.Equal(150, updatedCategory.EntryFee);
+                Assert.Equal(200, updatedCategory.MaximumParticipants);
+            }
+        }
+
+        [Fact]
+        public async Task UpdateCategory_ShouldReturnNotFound_WhenCategoryDoesNotExist()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var controller = new CategoriesController(context);
+                SetOrganiser(controller, 1);
+
+                var request = new CreateCategoryRequest
+                {
+                    CategoryName = "10 km Open",
+                    Distance = 10,
+                    EntryFee = 150,
+                    MaximumParticipants = 200
+                };
+
+                var result = await controller.UpdateCategory(999, request);
+
+                Assert.IsType<NotFoundObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task UpdateCategory_ShouldReturnForbid_WhenEventBelongsToAnotherOrganiser()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, eventItem) = await CreateEventAsync(
+                    context,
+                    "categories.updateowner@test.com");
+
+                var category = CreateCategory(eventItem);
+
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
+
+                var controller = new CategoriesController(context);
+                SetOrganiser(controller, eventItem.OrganiserId + 1000);
+
+                var request = new CreateCategoryRequest
+                {
+                    CategoryName = "10 km Open",
+                    Distance = 10,
+                    EntryFee = 150,
+                    MaximumParticipants = 200
+                };
+
+                var result = await controller.UpdateCategory(
+                    category.CategoryId,
+                    request);
+
+                Assert.IsType<ForbidResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task DeleteCategory_ShouldReturnNoContent_WhenOrganiserOwnsEvent()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (organiser, eventItem) = await CreateEventAsync(
+                    context,
+                    "categories.delete@test.com");
+
+                var category = CreateCategory(eventItem);
+
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
+
+                var controller = new CategoriesController(context);
+                SetOrganiser(controller, organiser.UserId);
+
+                var result = await controller.DeleteCategory(
+                    category.CategoryId);
+
+                Assert.IsType<NoContentResult>(result);
+
+                Assert.False(
+                    await context.Categories.AnyAsync(
+                        c => c.CategoryId == category.CategoryId));
+            }
+        }
+
+        [Fact]
+        public async Task DeleteCategory_ShouldReturnNotFound_WhenCategoryDoesNotExist()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var controller = new CategoriesController(context);
+                SetOrganiser(controller, 1);
+
+                var result = await controller.DeleteCategory(999);
+
+                Assert.IsType<NotFoundObjectResult>(result);
+            }
+        }
+
+        [Fact]
+        public async Task DeleteCategory_ShouldReturnForbid_WhenEventBelongsToAnotherOrganiser()
+        {
+            var (context, connection) = await CreateContextAsync();
+
+            await using (context)
+            await using (connection)
+            {
+                var (_, eventItem) = await CreateEventAsync(
+                    context,
+                    "categories.deleteowner@test.com");
+
+                var category = CreateCategory(eventItem);
+
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
+
+                var controller = new CategoriesController(context);
+                SetOrganiser(controller, eventItem.OrganiserId + 1000);
+
+                var result = await controller.DeleteCategory(
+                    category.CategoryId);
+
+                Assert.IsType<ForbidResult>(result);
+            }
+        }
     }
+
+
 }
