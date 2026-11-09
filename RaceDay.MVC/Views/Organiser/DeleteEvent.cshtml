@@ -1,0 +1,41 @@
+﻿@model RaceDay.MVC.ViewModels.EventViewModel
+
+@{
+    ViewData["Title"] = "Delete Event";
+}
+
+<div class="container mt-4">
+
+    <div class="card shadow p-4">
+
+        <h2 class="text-danger">Delete Event</h2>
+
+        <div class="alert alert-warning mt-3">
+            Are you sure you want to delete this event?
+            This action cannot be undone.
+        </div>
+
+        <h4>@Model.EventName</h4>
+
+        <p><strong>Date:</strong> @Model.EventDate</p>
+        <p><strong>Location:</strong> @Model.Location</p>
+        <p><strong>Distance:</strong> @Model.Distance KM</p>
+        <p><strong>Event Type:</strong> @Model.EventType</p>
+
+        <form asp-action="DeleteEventConfirmed" method="post">
+
+            <input type="hidden" name="id" value="@Model.EventId" />
+
+            <button type="submit" class="btn btn-danger">
+                Yes, Delete Event
+            </button>
+
+            <a asp-action="Events" class="btn btn-secondary">
+                Cancel
+            </a>
+
+        </form>
+
+    </div>
+
+</div>

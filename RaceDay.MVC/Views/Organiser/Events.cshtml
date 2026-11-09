@@ -1,0 +1,76 @@
+﻿@model List<RaceDay.MVC.ViewModels.EventViewModel>
+
+@{
+    ViewData["Title"] = "Manage Events";
+}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Events</h2>
+
+        <a asp-controller="Organiser"
+           asp-action="CreateEvent"
+           class="btn btn-warning">
+            Create New Event
+        </a>
+    </div>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="alert alert-info">
+            You haven't created any events yet.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Date</th>
+                        <th>Location</th>
+                        <th>Distance (KM)</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var race in Model)
+                    {
+                        <tr>
+                            <td>@race.EventName</td>
+                            <td>@race.EventDate</td>
+                            <td>@race.Location</td>
+                            <td>@race.Distance</td>
+                            <td>@race.EventType</td>
+                            <td>
+                                <a asp-action="EditEvent"
+                                   asp-route-id="@race.EventId"
+                                   class="btn btn-sm btn-primary">
+                                    Edit
+                                </a>
+
+                                <a asp-action="DeleteEvent"
+                                   asp-route-id="@race.EventId"
+                                   class="btn btn-sm btn-danger">
+                                    Delete
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</div>

@@ -75,6 +75,254 @@ namespace RaceDay.MVC.Controllers
             };
 
             return View(dashboard);
+
+
+        }
+
+        public async Task<IActionResult> Events()
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                "api/events");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.ErrorMessage = "Unable to load your events.";
+                return View(new List<EventViewModel>());
+            }
+
+            var events = await response.Content
+                .ReadFromJsonAsync<List<EventViewModel>>()
+                ?? new List<EventViewModel>();
+
+            int.TryParse(
+                HttpContext.Session.GetString("UserId"),
+                out int organiserId);
+
+            var organiserEvents = events
+                .Where(e => e.OrganiserId == organiserId)
+                .ToList();
+
+            return View(organiserEvents);
+        }
+
+        [HttpGet]
+        public IActionResult CreateEvent()
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            return View(new EventFormViewModel
+            {
+                EventDate = DateOnly.FromDateTime(DateTime.Today.AddDays(1))
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateEvent(EventFormViewModel model)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var request = new
+            {
+                model.EventName,
+                model.Description,
+                model.EventDate,
+                model.Location,
+                model.Distance,
+                model.EventType
+            };
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Post,
+                "api/events",
+                request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+
+                ModelState.AddModelError(
+                    string.Empty,
+                    $"Event creation failed: {error}");
+
+                return View(model);
+            }
+
+            TempData["SuccessMessage"] = "Event created successfully!";
+
+            return RedirectToAction(nameof(Events));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditEvent(int id)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{id}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                TempData["ErrorMessage"] = "Unable to find this event.";
+                return RedirectToAction(nameof(Events));
+            }
+
+            var race = await response.Content.ReadFromJsonAsync<EventViewModel>();
+
+            if (race == null)
+            {
+                return RedirectToAction(nameof(Events));
+            }
+
+            int.TryParse(
+                HttpContext.Session.GetString("UserId"),
+                out int organiserId);
+
+            if (race.OrganiserId != organiserId)
+            {
+                return Forbid();
+            }
+
+            var model = new EventFormViewModel
+            {
+                EventId = race.EventId,
+                EventName = race.EventName,
+                Description = race.Description,
+                EventDate = race.EventDate,
+                Location = race.Location,
+                Distance = race.Distance,
+                EventType = race.EventType
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditEvent(EventFormViewModel model)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            var request = new
+            {
+                model.EventName,
+                model.Description,
+                model.EventDate,
+                model.Location,
+                model.Distance,
+                model.EventType
+            };
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Put,
+                $"api/events/{model.EventId}",
+                request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+
+                ModelState.AddModelError(
+                    string.Empty,
+                    $"Event update failed: {error}");
+
+                return View(model);
+            }
+
+            TempData["SuccessMessage"] = "Event updated successfully!";
+
+            return RedirectToAction(nameof(Events));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DeleteEvent(int id)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{id}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                TempData["ErrorMessage"] = "Unable to find this event.";
+                return RedirectToAction(nameof(Events));
+            }
+
+            var race = await response.Content.ReadFromJsonAsync<EventViewModel>();
+
+            if (race == null)
+            {
+                return RedirectToAction(nameof(Events));
+            }
+
+            int.TryParse(
+                HttpContext.Session.GetString("UserId"),
+                out int organiserId);
+
+            if (race.OrganiserId != organiserId)
+            {
+                return Forbid();
+            }
+
+            return View(race);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteEventConfirmed(int id)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+            {
+                return RedirectToAction("Login", "Auth");
+            }
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Delete,
+                $"api/events/{id}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                TempData["ErrorMessage"] = "Unable to delete this event.";
+                return RedirectToAction(nameof(Events));
+            }
+
+            TempData["SuccessMessage"] = "Event deleted successfully!";
+
+            return RedirectToAction(nameof(Events));
         }
     }
+
 }
