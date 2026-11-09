@@ -68,6 +68,12 @@
                                     Manage Categories
                                 </a>
 
+                                <a asp-action="Enrolments"
+                                   asp-route-eventId="@race.EventId"
+                                   class="btn btn-sm btn-success">
+                                    View Enrolments
+                                </a>
+
                                 <a asp-action="EditEvent"
                                    asp-route-id="@race.EventId"
                                    class="btn btn-sm btn-primary">
@@ -86,4 +92,5 @@
             </table>
         </div>
     }
+
 </div>

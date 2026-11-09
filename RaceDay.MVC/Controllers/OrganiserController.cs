@@ -570,6 +570,54 @@ namespace RaceDay.MVC.Controllers
 
             return RedirectToAction(nameof(Categories), new { eventId });
         }
+        // Display participants enrolled in an event.
+        public async Task<IActionResult> Enrolments(int eventId)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+                return RedirectToAction("Login", "Auth");
+
+            // Verify event ownership.
+            var eventResponse = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{eventId}");
+
+            if (!eventResponse.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Events));
+
+            var race = await eventResponse.Content
+                .ReadFromJsonAsync<EventViewModel>();
+
+            if (race == null)
+                return RedirectToAction(nameof(Events));
+
+            int.TryParse(
+                HttpContext.Session.GetString("UserId"),
+                out int organiserId);
+
+            if (race.OrganiserId != organiserId)
+                return Forbid();
+
+            // Retrieve event enrolments.
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{eventId}/enrolments");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.ErrorMessage = "Unable to load event enrolments.";
+                return View(new List<OrganiserEnrolmentViewModel>());
+            }
+
+            var enrolments = await response.Content
+                .ReadFromJsonAsync<List<OrganiserEnrolmentViewModel>>()
+                ?? new List<OrganiserEnrolmentViewModel>();
+
+            ViewBag.EventId = eventId;
+            ViewBag.EventName = race.EventName;
+
+            return View(enrolments);
+        }
+
     }
 
 }
