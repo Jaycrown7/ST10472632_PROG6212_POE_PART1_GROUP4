@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RaceDay.API.Data;
 using RaceDay.API.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Azure.Storage.Blobs;
 
 namespace RaceDay.API
 {
@@ -48,6 +49,11 @@ namespace RaceDay.API
                     builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddScoped<AuthService>();
+            builder.Services.AddScoped<AzureBlobStorageService>();
+
+            builder.Services.AddSingleton(x =>
+               new BlobServiceClient(
+                    builder.Configuration.GetConnectionString("AzureStorage")));
 
             var app = builder.Build();
 

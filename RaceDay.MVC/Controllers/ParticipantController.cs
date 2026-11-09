@@ -53,6 +53,82 @@ namespace RaceDay.MVC.Controllers
                 .ReadFromJsonAsync<List<ResultViewModel>>();
 
             return View(results ?? new List<ResultViewModel>());
+
         }
+
+        [HttpGet]
+        public async Task<IActionResult> Profile()
+        {
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                "api/users/profile");
+
+            if (!response.IsSuccessStatusCode)
+                return RedirectToAction("Login", "Auth");
+
+            var profile = await response.Content
+                .ReadFromJsonAsync<ProfileViewModel>();
+
+            return View(profile ?? new ProfileViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Profile(ProfileViewModel model)
+        {
+            string? imageUrl = model.ProfileImageUrl;
+
+            if (model.ProfileImage != null && model.ProfileImage.Length > 0)
+            {
+                var uploadResponse = await _apiService.UploadFileAsync(
+                    model.ProfileImage);
+
+                if (!uploadResponse.IsSuccessStatusCode)
+                {
+                    ModelState.AddModelError(
+                        "ProfileImage",
+                        "Image upload failed. Please try again.");
+
+                    return View(model);
+                }
+
+                var uploadResult = await uploadResponse.Content
+                    .ReadFromJsonAsync<UploadImageResponse>();
+
+                imageUrl = uploadResult?.ImageUrl;
+            }
+
+            var updateRequest = new
+            {
+                model.PhoneNumber,
+                model.City,
+                model.EmergencyContact,
+                ProfileImageUrl = imageUrl
+            };
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Put,
+                "api/users/profile",
+                updateRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ModelState.AddModelError(
+                    "",
+                    "Unable to update your profile.");
+
+                return View(model);
+            }
+
+            TempData["SuccessMessage"] = "Profile updated successfully!";
+
+            return RedirectToAction(nameof(Profile));
+        }
+
+        public class UploadImageResponse
+        {
+            public string? ImageUrl { get; set; }
+        }
+
     }
 }

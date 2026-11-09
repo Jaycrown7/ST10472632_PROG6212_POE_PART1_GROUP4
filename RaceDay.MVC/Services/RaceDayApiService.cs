@@ -84,6 +84,36 @@ namespace RaceDay.MVC.Services
             return await client.SendAsync(request);
         }
 
+        public async Task<HttpResponseMessage> UploadFileAsync(IFormFile file)
+        {
+            var client = CreateClient();
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                "api/uploads");
+
+            var authCookie = Session.GetString("ApiAuthCookie");
+
+            if (!string.IsNullOrEmpty(authCookie))
+            {
+                request.Headers.Add("Cookie", authCookie);
+            }
+
+            using var stream = file.OpenReadStream();
+            using var content = new MultipartFormDataContent();
+            using var fileContent = new StreamContent(stream);
+
+            fileContent.Headers.ContentType =
+                new System.Net.Http.Headers.MediaTypeHeaderValue(
+                    file.ContentType);
+
+            content.Add(fileContent, "file", Path.GetFileName(file.FileName));
+
+            request.Content = content;
+
+            return await client.SendAsync(request);
+        }
+
         public async Task LogoutAsync()
         {
             try

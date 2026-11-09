@@ -1,0 +1,83 @@
+﻿@model RaceDay.MVC.ViewModels.ProfileViewModel
+
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="container mt-4">
+    <h2>My Profile</h2>
+    <p>Manage your RaceDay account information.</p>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    <form asp-action="Profile"
+          method="post"
+          enctype="multipart/form-data">
+
+        @Html.AntiForgeryToken()
+
+        <div asp-validation-summary="All"
+             class="text-danger mb-3"></div>
+
+        <input type="hidden" asp-for="UserId" />
+        <input type="hidden" asp-for="ProfileImageUrl" />
+
+        @if (!string.IsNullOrEmpty(Model.ProfileImageUrl))
+        {
+            <div class="mb-3">
+                <img src="@Model.ProfileImageUrl"
+                     alt="Profile picture"
+                     style="width:120px;height:120px;object-fit:cover;border-radius:50%;" />
+            </div>
+        }
+
+        <div class="mb-3">
+            <label asp-for="FirstName" class="form-label"></label>
+            <input asp-for="FirstName" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="LastName" class="form-label"></label>
+            <input asp-for="LastName" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" readonly />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="PhoneNumber" class="form-label"></label>
+            <input asp-for="PhoneNumber" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="City" class="form-label"></label>
+            <input asp-for="City" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="EmergencyContact" class="form-label"></label>
+            <input asp-for="EmergencyContact" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ProfileImage" class="form-label">
+                Profile Picture
+            </label>
+            <input asp-for="ProfileImage"
+                   type="file"
+                   accept=".jpg,.jpeg,.png,.webp"
+                   class="form-control" />
+        </div>
+
+        <button type="submit" class="btn btn-warning">
+            Save Profile
+        </button>
+    </form>
+</div>
