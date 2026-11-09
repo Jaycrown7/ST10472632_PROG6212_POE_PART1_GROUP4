@@ -1,0 +1,119 @@
+﻿@model List<RaceDay.MVC.ViewModels.ResultViewModel>
+
+@{
+    ViewData["Title"] = "My Results";
+}
+
+<div class="container py-5">
+
+    <div class="mb-5">
+        <h1 class="fw-bold">MY <span class="text-warning">RESULTS</span></h1>
+
+        <p class="text-muted">
+            Track your race performance, finishing times and positions.
+        </p>
+    </div>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-5">
+
+                <h4>No race results available yet.</h4>
+
+                <p class="text-muted">
+                    Your results will appear here once an organiser
+                    records and publishes them.
+                </p>
+
+                <a asp-controller="Events"
+                   asp-action="Index"
+                   class="btn btn-warning mt-3">
+                    Explore Events
+                </a>
+
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            @foreach (var result in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+
+                    <div class="card h-100 shadow-sm border-0">
+
+                        <div class="card-body p-4">
+
+                            <span class="badge bg-warning text-dark mb-3">
+                                @result.Enrolment.Event.EventType
+                            </span>
+
+                            <h4 class="fw-bold">
+                                @result.Enrolment.Event.EventName
+                            </h4>
+
+                            <hr />
+
+                            <p>
+                                <strong>Event Date:</strong>
+                                @result.Enrolment.Event.EventDate.ToString("dd MMMM yyyy")
+                            </p>
+
+                            <p>
+                                <strong>Location:</strong>
+                                @result.Enrolment.Event.Location
+                            </p>
+
+                            <p>
+                                <strong>Category:</strong>
+                                @result.Enrolment.Category.CategoryName
+                            </p>
+
+                            <p>
+                                <strong>Distance:</strong>
+                                @result.Enrolment.Category.Distance km
+                            </p>
+
+                            <div class="bg-light rounded p-3 mt-3">
+
+                                <p class="mb-2">
+                                    <strong>Finishing Time:</strong>
+                                    @result.FinishTime.ToString("HH:mm:ss")
+                                </p>
+
+                                <p class="mb-2">
+                                    <strong>Position:</strong>
+                                    #@result.Position
+                                </p>
+
+                                <p class="mb-0">
+                                    <strong>Result Status:</strong>
+
+                                    <span class="badge bg-success">
+                                        @result.ResultStatus
+                                    </span>
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+
+</div>
