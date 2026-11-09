@@ -16,6 +16,13 @@
         </a>
     </div>
 
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
     @if (ViewBag.ErrorMessage != null)
     {
         <div class="alert alert-danger">
@@ -53,7 +60,14 @@
                             <td>@race.Location</td>
                             <td>@race.Distance</td>
                             <td>@race.EventType</td>
+
                             <td>
+                                <a asp-action="Categories"
+                                   asp-route-eventId="@race.EventId"
+                                   class="btn btn-sm btn-warning">
+                                    Manage Categories
+                                </a>
+
                                 <a asp-action="EditEvent"
                                    asp-route-id="@race.EventId"
                                    class="btn btn-sm btn-primary">
@@ -72,5 +86,4 @@
             </table>
         </div>
     }
-
 </div>

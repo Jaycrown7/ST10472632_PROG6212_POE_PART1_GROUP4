@@ -106,9 +106,18 @@ namespace RaceDay.API.Controllers
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(
-                nameof(GetCategoryById),
-                new { id = category.CategoryId },
-                category);
+    nameof(GetCategoryById),
+    new { id = category.CategoryId },
+    new
+    {
+        category.CategoryId,
+        category.EventId,
+        category.CategoryName,
+        category.Distance,
+        category.EntryFee,
+        category.MaximumParticipants,
+        category.CreatedAt
+    });
         }
 
         // Update a category belonging to an event owned by the organiser.
@@ -149,7 +158,16 @@ namespace RaceDay.API.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(category);
+            return Ok(new
+            {
+                category.CategoryId,
+                category.EventId,
+                category.CategoryName,
+                category.Distance,
+                category.EntryFee,
+                category.MaximumParticipants,
+                category.CreatedAt
+            });
         }
 
         // Delete a category belonging to an event owned by the organiser.

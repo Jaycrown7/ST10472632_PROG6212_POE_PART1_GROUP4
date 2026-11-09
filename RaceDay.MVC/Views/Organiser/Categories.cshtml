@@ -1,0 +1,91 @@
+﻿@model List<RaceDay.MVC.ViewModels.CategoryViewModel>
+
+@{
+    ViewData["Title"] = "Manage Categories";
+}
+
+<div class="container mt-4">
+    <h2>Manage Categories</h2>
+
+    <h5 class="text-muted">@ViewBag.EventName</h5>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    <a asp-action="CreateCategory"
+       asp-route-eventId="@ViewBag.EventId"
+       class="btn btn-warning mb-3">
+        Create New Category
+    </a>
+
+    <a asp-action="Events"
+       class="btn btn-secondary mb-3">
+        Back to Events
+    </a>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="alert alert-info">
+            No categories have been created for this event yet.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Distance (KM)</th>
+                        <th>Entry Fee</th>
+                        <th>Maximum Participants</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var category in Model)
+                    {
+                        <tr>
+                            <td>@category.CategoryName</td>
+                            <td>@category.Distance</td>
+                            <td>R @category.EntryFee</td>
+                            <td>@category.MaximumParticipants</td>
+                            <td>
+                                <a asp-action="EditCategory"
+                                   asp-route-id="@category.CategoryId"
+                                   class="btn btn-sm btn-warning">
+                                    Edit
+                                </a>
+
+                                <a asp-action="DeleteCategory"
+                                   asp-route-id="@category.CategoryId"
+                                   class="btn btn-sm btn-danger">
+                                    Delete
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
