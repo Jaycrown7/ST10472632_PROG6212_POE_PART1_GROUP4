@@ -1,0 +1,83 @@
+﻿@model List<RaceDay.MVC.ViewModels.EventViewModel>
+
+@{
+    ViewData["Title"] = "Upcoming Events";
+}
+
+<div class="container py-5">
+
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">DISCOVER <span class="text-warning">RACE DAY</span></h1>
+        <p class="text-muted">
+            Find your next challenge. Choose your race. Make it count.
+        </p>
+    </div>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="text-center py-5">
+            <h4>No events available yet.</h4>
+            <p class="text-muted">
+                Check back soon for upcoming races.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            @foreach (var race in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+
+                    <div class="card h-100 shadow-sm border-0">
+
+                        <div class="card-body p-4">
+
+                            <span class="badge bg-warning text-dark mb-3">
+                                @race.EventType
+                            </span>
+
+                            <h4 class="fw-bold">
+                                @race.EventName
+                            </h4>
+
+                            <p class="text-muted">
+                                @race.Description
+                            </p>
+
+                            <hr />
+
+                            <p>
+                                <strong>📅 Date:</strong>
+                                @race.EventDate.ToString("dd MMMM yyyy")
+                            </p>
+
+                            <p>
+                                <strong>📍 Location:</strong>
+                                @race.Location
+                            </p>
+
+                            <p>
+                                <strong>🏃 Distance:</strong>
+                                @race.Distance km
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+
+</div>
