@@ -1,0 +1,110 @@
+﻿@model RaceDay.MVC.ViewModels.RecordOrganiserResultViewModel
+
+@{
+    ViewData["Title"] = "Record Race Result";
+
+    var enrolments =
+        ViewBag.Enrolments as List<RaceDay.MVC.ViewModels.OrganiserEnrolmentViewModel>
+        ?? new List<RaceDay.MVC.ViewModels.OrganiserEnrolmentViewModel>();
+}
+
+<div class="container mt-4">
+
+    <h2>Record Race Result</h2>
+    <p class="text-muted">@ViewBag.EventName</p>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @if (enrolments.Count == 0)
+    {
+        <div class="alert alert-info">
+            No active participants are available for recording results.
+        </div>
+    }
+    else
+    {
+        <form asp-action="RecordResult" method="post">
+
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="EventId" />
+
+            <div class="mb-3">
+                <label class="form-label">Participant</label>
+
+                <select asp-for="EnrolmentId" class="form-select" required>
+                    <option value="">Select participant</option>
+
+                    @foreach (var enrolment in enrolments)
+                    {
+                        <option value="@enrolment.EnrolmentId">
+                            @enrolment.Participant.FirstName
+                            @enrolment.Participant.LastName
+                            - @enrolment.Category.CategoryName
+                        </option>
+                    }
+                </select>
+
+                <span asp-validation-for="EnrolmentId"
+                      class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="FinishTime" class="form-label">
+                    Finish Time
+                </label>
+
+                <input asp-for="FinishTime"
+                       type="time"
+                       step="1"
+                       class="form-control"
+                       required />
+
+                <span asp-validation-for="FinishTime"
+                      class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Position" class="form-label">
+                    Finishing Position
+                </label>
+
+                <input asp-for="Position"
+                       type="number"
+                       min="1"
+                       class="form-control"
+                       required />
+
+                <span asp-validation-for="Position"
+                      class="text-danger"></span>
+            </div>
+
+            <input type="hidden"
+                   asp-for="ResultStatus"
+                   value="Completed" />
+
+            <button type="submit" class="btn btn-warning">
+                Record Result
+            </button>
+
+            <a asp-action="Events"
+               class="btn btn-secondary">
+                Back
+            </a>
+
+        </form>
+    }
+
+</div>

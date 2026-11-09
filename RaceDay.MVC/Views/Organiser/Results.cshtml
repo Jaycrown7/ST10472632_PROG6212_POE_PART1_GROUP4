@@ -1,0 +1,87 @@
+﻿@model List<RaceDay.MVC.ViewModels.OrganiserResultViewModel>
+
+@{
+    ViewData["Title"] = "Event Results";
+}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>Race Results</h2>
+            <p class="text-muted">@ViewBag.EventName</p>
+        </div>
+
+        <a asp-action="RecordResult"
+           asp-route-eventId="@ViewBag.EventId"
+           class="btn btn-warning">
+            Record New Result
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="alert alert-info">
+            No race results have been recorded yet.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>Participant</th>
+                        <th>Email</th>
+                        <th>Category</th>
+                        <th>Distance (KM)</th>
+                        <th>Finish Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var result in Model.OrderBy(r => r.Position))
+                    {
+                        <tr>
+                            <td><strong>@result.Position</strong></td>
+                            <td>
+                                @result.Participant.FirstName
+                                @result.Participant.LastName
+                            </td>
+                            <td>@result.Participant.Email</td>
+                            <td>@result.Category.CategoryName</td>
+                            <td>@result.Category.Distance</td>
+                            <td>@result.FinishTime</td>
+                            <td>
+                                <span class="badge bg-success">
+                                    @result.ResultStatus
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <a asp-action="Events" class="btn btn-secondary mt-3">
+        Back to Events
+    </a>
+
+</div>

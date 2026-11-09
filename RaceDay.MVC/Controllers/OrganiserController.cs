@@ -617,6 +617,155 @@ namespace RaceDay.MVC.Controllers
 
             return View(enrolments);
         }
+        // Display results belonging to an event.
+        public async Task<IActionResult> Results(int eventId)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+                return RedirectToAction("Login", "Auth");
+
+            var eventResponse = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{eventId}");
+
+            if (!eventResponse.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Events));
+
+            var race = await eventResponse.Content
+                .ReadFromJsonAsync<EventViewModel>();
+
+            if (race == null)
+                return RedirectToAction(nameof(Events));
+
+            int.TryParse(
+                HttpContext.Session.GetString("UserId"),
+                out int organiserId);
+
+            if (race.OrganiserId != organiserId)
+                return Forbid();
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{eventId}/results");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.ErrorMessage = "Unable to load event results.";
+                return View(new List<OrganiserResultViewModel>());
+            }
+
+            var results = await response.Content
+                .ReadFromJsonAsync<List<OrganiserResultViewModel>>()
+                ?? new List<OrganiserResultViewModel>();
+
+            ViewBag.EventId = eventId;
+            ViewBag.EventName = race.EventName;
+
+            return View(results);
+        }
+
+
+        // Display the record result form.
+        [HttpGet]
+        public async Task<IActionResult> RecordResult(int eventId)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+                return RedirectToAction("Login", "Auth");
+
+            var eventResponse = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{eventId}");
+
+            if (!eventResponse.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Events));
+
+            var race = await eventResponse.Content
+                .ReadFromJsonAsync<EventViewModel>();
+
+            if (race == null)
+                return RedirectToAction(nameof(Events));
+
+            int.TryParse(
+                HttpContext.Session.GetString("UserId"),
+                out int organiserId);
+
+            if (race.OrganiserId != organiserId)
+                return Forbid();
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Get,
+                $"api/events/{eventId}/enrolments");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                ViewBag.ErrorMessage = "Unable to load participants.";
+                return View(new RecordOrganiserResultViewModel
+                {
+                    EventId = eventId
+                });
+            }
+
+            var enrolments = await response.Content
+                .ReadFromJsonAsync<List<OrganiserEnrolmentViewModel>>()
+                ?? new List<OrganiserEnrolmentViewModel>();
+
+            ViewBag.EventName = race.EventName;
+            ViewBag.Enrolments = enrolments
+                .Where(e => e.Status == "Active")
+                .ToList();
+
+            return View(new RecordOrganiserResultViewModel
+            {
+                EventId = eventId,
+                ResultStatus = "Completed"
+            });
+        }
+
+
+        // Save a participant's race result.
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RecordResult(
+            RecordOrganiserResultViewModel model)
+        {
+            if (HttpContext.Session.GetString("Role") != "Organiser")
+                return RedirectToAction("Login", "Auth");
+
+            if (!ModelState.IsValid)
+                return RedirectToAction(
+                    nameof(RecordResult),
+                    new { eventId = model.EventId });
+
+            var request = new
+            {
+                model.EnrolmentId,
+                model.FinishTime,
+                model.Position,
+                model.ResultStatus
+            };
+
+            var response = await _apiService.SendAsync(
+                HttpMethod.Post,
+                "api/results",
+                request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+
+                TempData["ErrorMessage"] =
+                    $"Unable to record result: {error}";
+
+                return RedirectToAction(
+                    nameof(RecordResult),
+                    new { eventId = model.EventId });
+            }
+
+            TempData["SuccessMessage"] = "Race result recorded successfully!";
+
+            return RedirectToAction(
+                nameof(Results),
+                new { eventId = model.EventId });
+        }
 
     }
 
