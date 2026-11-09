@@ -1,0 +1,127 @@
+﻿@model RaceDay.MVC.ViewModels.EventDetailsViewModel
+
+@{
+    ViewData["Title"] = "Event Details";
+}
+
+<div class="container py-5">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    <a asp-controller="Events" asp-action="Index"
+       class="btn btn-outline-secondary mb-4">
+        ← Back to Events
+    </a>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body p-4">
+
+            <span class="badge bg-warning text-dark mb-2">
+                @Model.Event.EventType
+            </span>
+
+            <h1 class="fw-bold">@Model.Event.EventName</h1>
+
+            <p class="text-muted">
+                @Model.Event.Description
+            </p>
+
+            <hr />
+
+            <p>
+                <strong>Date:</strong>
+                @Model.Event.EventDate.ToString("dd MMMM yyyy")
+            </p>
+
+            <p>
+                <strong>Location:</strong>
+                @Model.Event.Location
+            </p>
+
+            <p>
+                <strong>Distance:</strong>
+                @Model.Event.Distance km
+            </p>
+
+        </div>
+    </div>
+
+    <h3 class="fw-bold mb-3">Available Categories</h3>
+
+    @if (Model.Categories.Any())
+    {
+        <div class="row">
+
+            @foreach (var category in Model.Categories)
+            {
+                <div class="col-md-6 mb-3">
+
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+
+                            <h5 class="fw-bold">
+                                @category.CategoryName
+                            </h5>
+
+                            <p>
+                                <strong>Distance:</strong>
+                                @category.Distance km
+                            </p>
+
+                            <p>
+                                <strong>Entry Fee:</strong>
+                                R @category.EntryFee
+                            </p>
+
+                            <p>
+                                <strong>Maximum Participants:</strong>
+                                @category.MaximumParticipants
+                            </p>
+
+                            <form asp-controller="Events"
+                                  asp-action="Enrol"
+                                  method="post">
+
+                                @Html.AntiForgeryToken()
+
+                                <input type="hidden"
+                                       name="EventId"
+                                       value="@Model.Event.EventId" />
+
+                                <input type="hidden"
+                                       name="CategoryId"
+                                       value="@category.CategoryId" />
+
+                                <button type="submit" class="btn btn-warning w-100">
+                                    Enrol Now
+                                </button>
+
+                            </form>
+
+                        </div>
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            No categories are currently available for this event.
+        </div>
+    }
+
+</div>

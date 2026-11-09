@@ -1,0 +1,120 @@
+﻿@model List<RaceDay.MVC.ViewModels.MyEnrolmentViewModel>
+
+@{
+    ViewData["Title"] = "My Events";
+}
+
+<div class="container py-5">
+
+    <div class="mb-5">
+        <h1 class="fw-bold">MY <span class="text-warning">EVENTS</span></h1>
+        <p class="text-muted">
+            Track your race registrations and upcoming challenges.
+        </p>
+    </div>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-5">
+                <h4>You haven't enrolled in any events yet.</h4>
+
+                <p class="text-muted">
+                    Discover an event and register for your next challenge.
+                </p>
+
+                <a asp-controller="Events"
+                   asp-action="Index"
+                   class="btn btn-warning mt-3">
+                    Explore Events
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            @foreach (var enrolment in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+
+                    <div class="card h-100 shadow-sm border-0">
+
+                        <div class="card-body p-4">
+
+                            <span class="badge bg-warning text-dark mb-3">
+                                @enrolment.Event.EventType
+                            </span>
+
+                            <h4 class="fw-bold">
+                                @enrolment.Event.EventName
+                            </h4>
+
+                            <hr />
+
+                            <p>
+                                <strong>Date:</strong>
+                                @enrolment.Event.EventDate.ToString("dd MMMM yyyy")
+                            </p>
+
+                            <p>
+                                <strong>Location:</strong>
+                                @enrolment.Event.Location
+                            </p>
+
+                            <p>
+                                <strong>Category:</strong>
+                                @enrolment.Category.CategoryName
+                            </p>
+
+                            <p>
+                                <strong>Distance:</strong>
+                                @enrolment.Category.Distance km
+                            </p>
+
+                            <p>
+                                <strong>Entry Fee:</strong>
+                                R @enrolment.Category.EntryFee
+                            </p>
+
+                            <p>
+                                <strong>Enrolment Status:</strong>
+
+                                @if (enrolment.Status == "Active")
+                                {
+                                    <span class="badge bg-success">
+                                        @enrolment.Status
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        @enrolment.Status
+                                    </span>
+                                }
+                            </p>
+
+                            <p class="text-muted small">
+                                Registered:
+                                @enrolment.EnrolmentDate.ToString("dd MMMM yyyy")
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+            }
+
+        </div>
+    }
+
+</div>

@@ -20,6 +20,13 @@
         </div>
     }
 
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
     @if (Model == null || !Model.Any())
     {
         <div class="text-center py-5">
@@ -56,19 +63,26 @@
                             <hr />
 
                             <p>
-                                <strong>📅 Date:</strong>
+                                <strong>Date:</strong>
                                 @race.EventDate.ToString("dd MMMM yyyy")
                             </p>
 
                             <p>
-                                <strong>📍 Location:</strong>
+                                <strong>Location:</strong>
                                 @race.Location
                             </p>
 
                             <p>
-                                <strong>🏃 Distance:</strong>
+                                <strong>Distance:</strong>
                                 @race.Distance km
                             </p>
+
+                            <a asp-controller="Events"
+                               asp-action="Details"
+                               asp-route-id="@race.EventId"
+                               class="btn btn-warning w-100 mt-3">
+                                View Details
+                            </a>
 
                         </div>
 
