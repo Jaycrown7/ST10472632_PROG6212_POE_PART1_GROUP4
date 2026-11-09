@@ -1,0 +1,80 @@
+﻿@model RaceDay.MVC.ViewModels.OrganiserDashboardViewModel
+
+@{
+    ViewData["Title"] = "Organiser Dashboard";
+}
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">Organiser Dashboard</h2>
+
+    <p>Welcome back! Here's an overview of your race events.</p>
+
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger">
+            @ViewBag.ErrorMessage
+        </div>
+    }
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm p-3">
+                <h5>Total Enrolments</h5>
+                <h2>@Model.TotalEnrolments</h2>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm p-3">
+                <h5>Total Events</h5>
+                <h2>@Model.TotalEvents</h2>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm p-3">
+                <h5>Upcoming Events</h5>
+                <h2>@Model.UpcomingEvents</h2>
+            </div>
+        </div>
+
+    </div>
+
+    <h4 class="mb-3">Your Events</h4>
+
+    @if (Model.Events == null || !Model.Events.Any())
+    {
+        <div class="alert alert-info">
+            You haven't created any events yet.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Event Name</th>
+                        <th>Date</th>
+                        <th>Location</th>
+                        <th>Event Type</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var race in Model.Events)
+                    {
+                        <tr>
+                            <td>@race.EventName</td>
+                            <td>@race.EventDate</td>
+                            <td>@race.Location</td>
+                            <td>@race.EventType</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+</div>

@@ -99,6 +99,7 @@ namespace RaceDay.API.Services
             }
 
             var verificationResult = _passwordHasher.VerifyHashedPassword(
+            
                 user,
                 user.PasswordHash,
                 request.Password);
